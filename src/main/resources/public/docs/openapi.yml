@@ -1,0 +1,242 @@
+openapi: 3.0.0
+info:
+  version: '1.0.0'
+  title: File API
+
+security:
+  - basicAuth: []
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+  schemas:
+    FileMeta:
+      type: object
+      properties:
+        token:
+          type: string
+        filename:
+          type: string
+        size:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        meta:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          nullable: true
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+              code:
+                type: string
+        status:
+          type: integer
+
+paths:
+  /status:
+    get:
+      summary: Status
+      description: Get API health status.
+      security: []
+      responses:
+        '200':
+          description: API is running.
+
+  /files:
+    post:
+      summary: Upload file
+      description: Upload a file and receive a token for future retrieval.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - contentType
+                - meta
+                - source
+                - content
+              properties:
+                name:
+                  type: string
+                  description: File name
+                contentType:
+                  type: string
+                  description: MIME type of the file
+                meta:
+                  type: string
+                  description: JSON string of additional metadata
+                source:
+                  type: string
+                  description: Source system identifier
+                expireTime:
+                  type: string
+                  format: date-time
+                  description: Optional expiry timestamp (ISO 8601)
+                content:
+                  type: string
+                  format: binary
+                  description: File content
+      responses:
+        '201':
+          description: File uploaded successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                  status:
+                    type: integer
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /files/metas:
+    post:
+      summary: Get file metadata
+      description: Retrieve metadata for one or more files by token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tokens
+              properties:
+                tokens:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Metadata for each found token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      files:
+                        type: object
+                        additionalProperties:
+                          $ref: '#/components/schemas/FileMeta'
+                  status:
+                    type: integer
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /file/{token}:
+    get:
+      summary: Download file
+      description: Download a file by its token.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content.
+          headers:
+            X-Filename:
+              schema:
+                type: string
+            X-Filesize:
+              schema:
+                type: string
+            X-CreateTime:
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete file
+      description: Delete a file by its token.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    nullable: true
+                  status:
+                    type: integer
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

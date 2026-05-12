@@ -1,0 +1,24 @@
+# Maven build output
+target/
+
+# Runtime upload storage
+uploads/
+
+# Environment / credentials
+variables.env
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Claude Code
+CLAUDE.md
+.claude/
